@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voice Changer - Preview</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0a;color:#fff;min-height:100vh;}
+.header{background:linear-gradient(135deg,#6C63FF,#4B3FCB);padding:20px;text-align:center;position:sticky;top:0;z-index:100;}
+.header h1{font-size:24px;margin-bottom:4px;}
+.header p{font-size:12px;opacity:0.85;}
+.content{padding:16px;max-width:800px;margin:0 auto;}
+.section-title{font-size:18px;font-weight:bold;margin:24px 0 12px;color:#6C63FF;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px;margin-bottom:24px;}
+.card{background:#141414;border-radius:16px;padding:16px 8px;text-align:center;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;border:2px solid transparent;}
+.card:hover{transform:translateY(-4px);box-shadow:0 8px 24px rgba(108,99,255,0.25);}
+.card.selected{border-color:#6C63FF;background:#1a1835;}
+.emoji{font-size:36px;margin-bottom:8px;}
+.card-title{font-size:13px;font-weight:600;}
+.card-sub{font-size:11px;color:#9E9E9E;margin-top:4px;}
+.controls{display:flex;justify-content:center;gap:24px;padding:24px;background:#141414;border-radius:20px;margin-top:8px;}
+.btn{display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;}
+.btn-circle{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;}
+.btn-record .btn-circle{background:#6C63FF;}
+.btn-play .btn-circle{background:#2E7D32;}
+.btn-label{font-size:12px;color:#9E9E9E;}
+.info{background:#141414;border-radius:12px;padding:16px;margin-top:16px;font-size:13px;line-height:1.7;color:#ccc;}
+.info b{color:#6C63FF;}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🎙️ Voice Changer</h1>
+  <p>Record your voice &amp; apply funny effects</p>
+</div>
+<div class="content">
+  <div class="section-title">Voice Effects</div>
+  <div class="grid" id="effectGrid"></div>
+  <div class="controls">
+    <div class="btn btn-record">
+      <div class="btn-circle">🎤</div>
+      <span class="btn-label">Record</span>
+    </div>
+    <div class="btn btn-play">
+      <div class="btn-circle">▶️</div>
+      <span class="btn-label">Play</span>
+    </div>
+  </div>
+  <div class="info">
+    <b>How it works:</b><br>
+    1. Select a voice effect above<br>
+    2. Tap <b>Record</b> and speak<br>
+    3. Tap <b>Play</b> to hear your voice transformed<br><br>
+    Effects use Android <b>MediaPlayer PlaybackParams</b> to shift pitch &amp; speed in real time.
+  </div>
+</div>
+<script>
+const effects = [
+  {emoji:"🎤",name:"Normal",sub:"Original"},
+  {emoji:"👧",name:"Girl",sub:"High pitch"},
+  {emoji:"👨",name:"Man",sub:"Deep voice"},
+  {emoji:"👩",name:"Woman",sub:"Soft voice"},
+  {emoji:"🧒",name:"Child",sub:"Cute voice"},
+  {emoji:"👴",name:"Old Man",sub:"Slow & deep"},
+  {emoji:"🤖",name:"Robot",sub:"Robotic"},
+  {emoji:"👽",name:"Alien",sub:"Super high"},
+  {emoji:"😈",name:"Devil",sub:"Scary deep"},
+  {emoji:"🧌",name:"Giant",sub:"Deepest"},
+];
+const grid = document.getElementById('effectGrid');
+effects.forEach((e,i) => {
+  const card = document.createElement('div');
+  card.className = 'card' + (i===0?' selected':'');
+  card.innerHTML = `<div class="emoji">${e.emoji}</div><div class="card-title">${e.name}</div><div class="card-sub">${e.sub}</div>`;
+  card.onclick = () => {
+    document.querySelectorAll('.card').forEach(c=>c.classList.remove('selected'));
+    card.classList.add('selected');
+  };
+  grid.appendChild(card);
+});
+</script>
+</body>
+</html>
