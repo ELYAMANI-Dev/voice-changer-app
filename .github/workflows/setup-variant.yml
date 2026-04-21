@@ -240,12 +240,3 @@ jobs:
           git add -A
           git commit -m "Setup variant: ${{ inputs.branch }} (${{ inputs.application_id }})" || echo "Nothing to commit"
           git push origin "${{ inputs.branch }}"
-
-      - name: Add branch to build.yml triggers
-        run: |
-          if ! grep -q "${{ inputs.branch }}" .github/workflows/build.yml; then
-            sed -i "s/branches: \[/branches: [ ${{ inputs.branch }},/" .github/workflows/build.yml
-            git add .github/workflows/build.yml
-            git commit -m "Add ${{ inputs.branch }} to build triggers"
-            git push origin "${{ inputs.branch }}"
-          fi
