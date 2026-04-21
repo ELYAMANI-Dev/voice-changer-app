@@ -1,0 +1,251 @@
+name: Setup New Variant
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'New branch name (= package name)'
+        required: true
+        type: string
+      application_id:
+        description: 'applicationId (e.g. com.example.app)'
+        required: true
+        type: string
+      app_name:
+        description: 'App name shown to user'
+        required: true
+        type: string
+      title:
+        description: 'Play Store title (max 30 chars)'
+        required: true
+        type: string
+      short_description:
+        description: 'Short description (max 80 chars)'
+        required: true
+        type: string
+      full_description:
+        description: 'Full description (max 4000 chars)'
+        required: true
+        type: string
+      primary_color:
+        description: 'Primary color hex (e.g. #6C63FF)'
+        required: false
+        default: '#6C63FF'
+        type: string
+      primary_dark:
+        description: 'Primary dark color hex (e.g. #4B3FCB)'
+        required: false
+        default: '#4B3FCB'
+        type: string
+      icon_bg_color:
+        description: 'Icon background color hex (e.g. #1A1A2E)'
+        required: false
+        default: '#1A1A2E'
+        type: string
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Create or switch to branch
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          if git ls-remote --heads origin "${{ inputs.branch }}" | grep -q "${{ inputs.branch }}"; then
+            echo "Branch exists, checking out"
+            git checkout "${{ inputs.branch }}"
+            git merge master --no-edit || true
+          else
+            echo "Creating new branch from master"
+            git checkout -b "${{ inputs.branch }}"
+          fi
+
+      - name: Update applicationId
+        run: |
+          sed -i 's/applicationId = ".*"/applicationId = "${{ inputs.application_id }}"/' app/build.gradle.kts
+          sed -i 's/versionCode = [0-9]*/versionCode = 1/' app/build.gradle.kts
+          sed -i 's/versionName = ".*"/versionName = "1.0"/' app/build.gradle.kts
+          echo "Updated applicationId to ${{ inputs.application_id }}"
+          grep -E 'applicationId|versionCode|versionName' app/build.gradle.kts
+
+      - name: Update app_name
+        run: |
+          sed -i 's|<string name="app_name">.*</string>|<string name="app_name">${{ inputs.app_name }}</string>|' app/src/main/res/values/strings.xml
+          echo "Updated app_name to ${{ inputs.app_name }}"
+
+      - name: Update theme colors
+        run: |
+          PRIMARY="${{ inputs.primary_color }}"
+          DARK="${{ inputs.primary_dark }}"
+          COLOR_FILE="app/src/main/java/com/voicechanger/calleffects/ui/theme/Color.kt"
+          if [ "$PRIMARY" != "#6C63FF" ]; then
+            sed -i "s/Color(0xFF6C63FF)/Color(0xFF${PRIMARY#\#})/" "$COLOR_FILE"
+            sed -i "s/Color(0xFF4B3FCB)/Color(0xFF${DARK#\#})/" "$COLOR_FILE"
+            echo "Updated theme colors: primary=$PRIMARY, dark=$DARK"
+          else
+            echo "Using default purple-blue theme"
+          fi
+
+      - name: Generate store listing
+        run: |
+          mkdir -p fastlane/metadata/android/en-US/images/phoneScreenshots
+
+          echo -n "${{ inputs.title }}" > fastlane/metadata/android/en-US/title.txt
+          echo -n "${{ inputs.short_description }}" > fastlane/metadata/android/en-US/short_description.txt
+
+          cat << 'FULLDESC' > fastlane/metadata/android/en-US/full_description.txt
+          ${{ inputs.full_description }}
+          FULLDESC
+          sed -i 's/^          //' fastlane/metadata/android/en-US/full_description.txt
+
+          echo "Store listing updated"
+
+      - name: Generate feature graphic and screenshots
+        run: |
+          pip install -q Pillow
+          python3 << 'PYEOF'
+          from PIL import Image, ImageDraw, ImageFont
+          import os
+
+          app_name = "${{ inputs.app_name }}"
+          primary = "${{ inputs.primary_color }}"
+          dark = "${{ inputs.primary_dark }}"
+
+          def hex_to_rgb(h):
+              h = h.lstrip('#')
+              return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
+          p_rgb = hex_to_rgb(primary)
+          d_rgb = hex_to_rgb(dark)
+
+          def gradient(draw, w, h, c1, c2):
+              for y in range(h):
+                  r = int(c1[0] + (c2[0] - c1[0]) * y / h)
+                  g = int(c1[1] + (c2[1] - c1[1]) * y / h)
+                  b = int(c1[2] + (c2[2] - c1[2]) * y / h)
+                  draw.line([(0, y), (w, y)], fill=(r, g, b))
+
+          try:
+              font_big = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 56)
+              font_med = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 28)
+              font_sm = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 32)
+              font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 64)
+              font_sub = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 36)
+              font_bar = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 48)
+          except:
+              font_big = font_med = font_sm = font_title = font_sub = font_bar = ImageFont.load_default()
+
+          img = Image.new('RGB', (1024, 500))
+          draw = ImageDraw.Draw(img)
+          gradient(draw, 1024, 500, d_rgb, p_rgb)
+
+          icon_path = 'fastlane/metadata/android/en-US/images/icon.png'
+          if os.path.exists(icon_path):
+              icon = Image.open(icon_path).resize((200, 200), Image.LANCZOS)
+              img.paste(icon, (80, 150))
+              tx = 320
+          else:
+              tx = 100
+
+          draw.text((tx, 160), app_name, fill='white', font=font_big)
+          draw.text((tx, 230), "Voice Changer & Call Effects", fill=(232, 245, 233), font=font_med)
+          img.save('fastlane/metadata/android/en-US/images/featureGraphic.png', 'PNG')
+
+          def make_screenshot(fname, title, subtitle, features):
+              w, h = 1080, 1920
+              img = Image.new('RGB', (w, h), '#FFFFFF')
+              draw = ImageDraw.Draw(img)
+              gradient(draw, w, 500, d_rgb, p_rgb)
+              if os.path.exists(icon_path):
+                  ic = Image.open(icon_path).resize((120, 120), Image.LANCZOS)
+                  img.paste(ic, ((w-120)//2, 80))
+              bb = draw.textbbox((0,0), title, font=font_title)
+              draw.text(((w-(bb[2]-bb[0]))//2, 230), title, fill='white', font=font_title)
+              bb = draw.textbbox((0,0), subtitle, font=font_sub)
+              draw.text(((w-(bb[2]-bb[0]))//2, 320), subtitle, fill=(232,245,233), font=font_sub)
+              draw.rounded_rectangle([90, 550, w-90, h-100], radius=30, fill='#F5F5F5', outline='#E0E0E0', width=2)
+              fy = 610
+              for feat in features:
+                  draw.ellipse([142, fy-8, 198, fy+48], fill=primary)
+                  draw.text((220, fy), feat, fill='#1A1C1E', font=font_sm)
+                  fy += 90
+              draw.rectangle([0, h-80, w, h], fill=primary)
+              bb = draw.textbbox((0,0), app_name, font=font_bar)
+              draw.text(((w-(bb[2]-bb[0]))//2, h-68), app_name, fill='white', font=font_bar)
+              img.save(f'fastlane/metadata/android/en-US/images/phoneScreenshots/{fname}', 'PNG')
+
+          make_screenshot('1_home.png', app_name, 'Transform Your Voice',
+              ['20+ voice effects', 'Real-time preview', 'Record & share', 'Call voice changer', 'Fun effects library', 'Easy to use', 'Works offline'])
+          make_screenshot('2_effects.png', 'Voice Effects', 'Endless Fun',
+              ['Robot voice', 'Helium effect', 'Deep bass voice', 'Echo & reverb', 'Alien sounds', 'Chipmunk effect', 'Custom pitch control'])
+          make_screenshot('3_record.png', 'Record & Share', 'Save Your Creations',
+              ['High quality recording', 'Save to gallery', 'Share on social media', 'MP3 & WAV export', 'Trim & edit', 'Background music', 'No watermark'])
+          PYEOF
+
+      - name: Generate app icon
+        run: |
+          python3 << 'PYEOF'
+          from PIL import Image, ImageDraw, ImageFont
+          import os
+
+          app_name = "${{ inputs.app_name }}"
+          bg_color = "${{ inputs.icon_bg_color }}"
+
+          def hex_to_rgb(h):
+              h = h.lstrip('#')
+              return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
+          try:
+              font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 280)
+          except:
+              font = ImageFont.load_default()
+
+          icon_path = 'fastlane/metadata/android/en-US/images/icon.png'
+          if not os.path.exists(icon_path) or os.path.getsize(icon_path) < 1000:
+              size = 512
+              img = Image.new('RGB', (size, size), hex_to_rgb(bg_color))
+              draw = ImageDraw.Draw(img)
+              letter = app_name[0].upper()
+              bb = draw.textbbox((0, 0), letter, font=font)
+              tw, th = bb[2] - bb[0], bb[3] - bb[1]
+              draw.text(((size - tw) // 2, (size - th) // 2 - 20), letter, fill='white', font=font)
+              img.save(icon_path, 'PNG')
+
+          src = Image.open(icon_path)
+          sizes = {'mdpi': 48, 'hdpi': 72, 'xhdpi': 96, 'xxhdpi': 144, 'xxxhdpi': 192}
+          for density, px in sizes.items():
+              folder = f'app/src/main/res/mipmap-{density}'
+              os.makedirs(folder, exist_ok=True)
+              resized = src.resize((px, px), Image.LANCZOS)
+              resized.save(f'{folder}/ic_launcher.webp', 'WEBP', quality=90)
+              resized.save(f'{folder}/ic_launcher_foreground.webp', 'WEBP', quality=90)
+              mask = Image.new('L', (px, px), 0)
+              ImageDraw.Draw(mask).ellipse([0, 0, px, px], fill=255)
+              round_img = Image.new('RGBA', (px, px), (0, 0, 0, 0))
+              round_img.paste(resized.convert('RGBA'), mask=mask)
+              round_img.save(f'{folder}/ic_launcher_round.webp', 'WEBP', quality=90)
+          PYEOF
+
+      - name: Commit and push
+        run: |
+          git add -A
+          git commit -m "Setup variant: ${{ inputs.branch }} (${{ inputs.application_id }})" || echo "Nothing to commit"
+          git push origin "${{ inputs.branch }}"
+
+      - name: Add branch to build.yml triggers
+        run: |
+          if ! grep -q "${{ inputs.branch }}" .github/workflows/build.yml; then
+            sed -i "s/branches: \[/branches: [ ${{ inputs.branch }},/" .github/workflows/build.yml
+            git add .github/workflows/build.yml
+            git commit -m "Add ${{ inputs.branch }} to build triggers"
+            git push origin "${{ inputs.branch }}"
+          fi
