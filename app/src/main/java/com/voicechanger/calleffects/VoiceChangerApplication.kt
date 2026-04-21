@@ -1,10 +1,10 @@
-package com.moroccan.fortuneteller
+package com.voicechanger.calleffects
 
 import android.app.Application
 import com.voicechanger.calleffects.analytics.MixpanelAnalytics
 import com.google.android.gms.ads.MobileAds
 
-class FortuneTellerApplication : Application() {
+class VoiceChangerApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         MobileAds.initialize(this)
