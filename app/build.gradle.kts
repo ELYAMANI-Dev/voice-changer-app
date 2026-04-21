@@ -1,0 +1,11 @@
+package com.moroccan.fortuneteller
+
+import android.app.Application
+import com.google.android.gms.ads.MobileAds
+
+class FortuneTellerApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        MobileAds.initialize(this)
+    }
+}
