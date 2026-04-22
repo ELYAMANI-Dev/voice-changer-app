@@ -84,7 +84,7 @@ jobs:
             git merge ${{ inputs.base_branch }} --no-edit || true
           else
             echo "Creating new branch from ${{ inputs.base_branch }}"
-            git checkout -b "${{ inputs.branch }}" "origin/${{ inputs.base_branch }}" "origin/${{ inputs.base_branch }}" "origin/${{ inputs.base_branch }}"
+            git checkout -b "${{ inputs.branch }}" "origin/${{ inputs.base_branch }}"
           fi
           # Restore workflows from base branch
           mkdir -p .github/workflows
