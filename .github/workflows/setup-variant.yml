@@ -43,6 +43,12 @@ on:
         default: '#1A1A2E'
         type: string
 
+      base_branch:
+        description: 'Base branch to create variant from'
+        required: false
+        default: 'master'
+        type: string
+
 jobs:
   setup:
     runs-on: ubuntu-latest
@@ -53,7 +59,7 @@ jobs:
       - name: Checkout master
         uses: actions/checkout@v4
         with:
-          ref: master
+          ref: ${{ inputs.base_branch }}
           fetch-depth: 0
 
       - name: Create or switch to branch
@@ -63,10 +69,10 @@ jobs:
           if git ls-remote --heads origin "${{ inputs.branch }}" | grep -q "${{ inputs.branch }}"; then
             echo "Branch exists, checking out"
             git checkout "${{ inputs.branch }}"
-            git merge master --no-edit || true
+            git merge ${{ inputs.base_branch }} --no-edit || true
           else
-            echo "Creating new branch from master"
-            git checkout -b "${{ inputs.branch }}"
+            echo "Creating new branch from ${{ inputs.base_branch }}"
+            git checkout -b "${{ inputs.branch }}" "origin/${{ inputs.base_branch }}"
           fi
 
       - name: Update applicationId
