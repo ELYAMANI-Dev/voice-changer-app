@@ -256,5 +256,5 @@ jobs:
       - name: Commit and push
         run: |
           git add -A
-          git commit -m "Setup variant: ${{ inputs.branch }} (${{ inputs.application_id }})" || echo "Nothing to commit"
+          git commit -m "Setup variant: ${{ inputs.branch }} (${{ inputs.application_id }})" --allow-empty
           git push origin "${{ inputs.branch }}"
