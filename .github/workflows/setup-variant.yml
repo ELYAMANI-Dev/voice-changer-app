@@ -66,7 +66,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      workflows: write
 
     steps:
       - name: Checkout master
@@ -79,8 +78,6 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          # Save workflows from base branch before switching
-          cp -r .github/workflows/ /tmp/workflows_backup/ 2>/dev/null || true
           if git ls-remote --heads origin "${{ inputs.branch }}" | grep -q "${{ inputs.branch }}"; then
             echo "Branch exists, checking out"
             git checkout "${{ inputs.branch }}"
@@ -89,9 +86,6 @@ jobs:
             echo "Creating new branch from ${{ inputs.base_branch }}"
             git checkout -b "${{ inputs.branch }}" "origin/${{ inputs.base_branch }}"
           fi
-          # Restore workflows from base branch
-          mkdir -p .github/workflows
-          cp -r /tmp/workflows_backup/* .github/workflows/ 2>/dev/null || true
 
       - name: Update applicationId
         run: |
@@ -261,10 +255,6 @@ jobs:
 
       - name: Commit and push
         run: |
-          # Ensure workflows from base branch exist on this branch
-          mkdir -p .github/workflows
-          git show origin/${{ inputs.base_branch }}:.github/workflows/build.yml > .github/workflows/build.yml 2>/dev/null || true
-          git show origin/${{ inputs.base_branch }}:.github/workflows/setup-variant.yml > .github/workflows/setup-variant.yml 2>/dev/null || true
           git add -A
           git commit -m "Setup variant: ${{ inputs.branch }} (${{ inputs.application_id }})" --allow-empty
           git push origin "${{ inputs.branch }}"
