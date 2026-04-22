@@ -86,8 +86,9 @@ jobs:
             echo "Creating new branch from ${{ inputs.base_branch }}"
             git checkout -b "${{ inputs.branch }}" "origin/${{ inputs.base_branch }}" "origin/${{ inputs.base_branch }}" "origin/${{ inputs.base_branch }}"
           fi
-          # Sync workflows from base branch to ensure build.yml is present
-          git checkout "origin/${{ inputs.base_branch }}" -- .github/workflows/ || true
+          # Restore workflows from base branch
+          mkdir -p .github/workflows
+          cp -r /tmp/workflows_backup/* .github/workflows/ 2>/dev/null || true
 
       - name: Update applicationId
         run: |
