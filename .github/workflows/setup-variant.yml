@@ -260,6 +260,10 @@ jobs:
 
       - name: Commit and push
         run: |
+          # Ensure workflows from base branch exist on this branch
+          mkdir -p .github/workflows
+          git show origin/${{ inputs.base_branch }}:.github/workflows/build.yml > .github/workflows/build.yml 2>/dev/null || true
+          git show origin/${{ inputs.base_branch }}:.github/workflows/setup-variant.yml > .github/workflows/setup-variant.yml 2>/dev/null || true
           git add -A
           git commit -m "Setup variant: ${{ inputs.branch }} (${{ inputs.application_id }})" --allow-empty
           git push origin "${{ inputs.branch }}"
